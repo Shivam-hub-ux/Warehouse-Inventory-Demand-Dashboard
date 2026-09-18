@@ -69,14 +69,12 @@ warehouse-inventory-demand-dashboard/
 ## 🔮 Data & Forecasting Workflow
 
 ### 1. Data Processing Flow
-```mermaid
-flowchart LR
-    A[Bundled Dataset] --> B[Data Repository Service]
-    B --> C[Analytics Engine]
-    C --> D[KPI Metrics]
-    C --> E[Stock Distribution]
-    B --> F[Statistical Forecast Engine]
-    F --> G[Projected Line Charts]
+```
+[ Bundled Dataset ] ──➔ [ Data Repository Service ] ──➔ [ Analytics Engine ]
+                                                              │
+                                            ┌─────────────────┴─────────────────┐
+                                            ▼                                   ▼
+                                     [ KPI Metrics ]                 [ Stock Distribution ]
 ```
 
 ### 2. Statistical Forecasting Algorithm
