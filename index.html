@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Warehouse Inventory & Demand Dashboard</title>
+  <meta name="description" content="A modern warehouse operations dashboard with multi-location stock tracking, animated pick/pack workflow, and client-side statistical demand forecasting." />
+  <link rel="stylesheet" href="./src/css/style.css" />
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Navbar Header -->
+    <header class="navbar">
+      <div class="navbar-container">
+        <a href="#" class="brand">
+          <div class="brand-logo">📦</div>
+          <div class="brand-text">
+            <h1>LogiTrack Ops</h1>
+            <span>Warehouse Inventory & Demand Intelligence</span>
+          </div>
+        </a>
+
+        <div class="nav-links">
+          <a href="#overview" class="nav-link active">Dashboard</a>
+          <a href="#forecasting" class="nav-link">Demand Forecast</a>
+          <a href="#workflow" class="nav-link">Pick/Pack Flow</a>
+          <a href="#inventory" class="nav-link">Inventory Table</a>
+          <div class="status-badge-live">
+            <span class="pulse-dot"></span>
+            System Online (Offline-Ready)
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Body -->
+    <main class="main-content" id="overview">
+
+      <!-- Filter & Search Bar -->
+      <section class="filter-bar">
+        <div class="filter-group">
+          <!-- Warehouse Location Filter -->
+          <div class="filter-control">
+            <label for="filter-warehouse">Warehouse Location</label>
+            <select id="filter-warehouse" class="input-select">
+              <option value="ALL">All Warehouses (Global)</option>
+              <option value="WH-NORTH">North Warehouse (Chicago)</option>
+              <option value="WH-SOUTH">South Warehouse (Dallas)</option>
+              <option value="WH-EAST">East Warehouse (New York)</option>
+              <option value="WH-WEST">West Warehouse (Los Angeles)</option>
+            </select>
+          </div>
+
+          <!-- Product Category Filter -->
+          <div class="filter-control">
+            <label for="filter-category">Product Category</label>
+            <select id="filter-category" class="input-select">
+              <option value="ALL">All Categories</option>
+              <option value="Electronics">Electronics</option>
+              <option value="Apparel & Footwear">Apparel & Footwear</option>
+              <option value="Home & Kitchen">Home & Kitchen</option>
+              <option value="Industrial Tools">Industrial Tools</option>
+              <option value="Automotive Parts">Automotive Parts</option>
+            </select>
+          </div>
+
+          <!-- Stock Status Filter -->
+          <div class="filter-control">
+            <label for="filter-status">Stock Level Status</label>
+            <select id="filter-status" class="input-select">
+              <option value="ALL">All Statuses</option>
+              <option value="IN_STOCK">In Stock (Healthy)</option>
+              <option value="LOW">Low Stock Warning</option>
+              <option value="CRITICAL">Critical Threshold</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Real-Time Search -->
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="filter-search" class="input-search" placeholder="Search by SKU, Product or Category..." />
+        </div>
+      </section>
+
+      <!-- Dynamic KPI Cards Section -->
+      <section class="kpi-grid" id="kpi-cards-container">
+        <!-- Rendered via src/components/dashboard.js -->
+      </section>
+
+      <!-- Overview Charts Section -->
+      <section class="dashboard-grid-3">
+        <!-- Multi-Location Warehouse Distribution -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🏢 Warehouse Stock & Capacity Distribution</div>
+              <div class="card-subtitle">Real-time inventory levels vs total physical warehouse capacity</div>
+            </div>
+          </div>
+          <div style="height: 300px; position: relative;">
+            <canvas id="chart-warehouse-dist"></canvas>
+          </div>
+        </div>
+
+        <!-- Inventory Stock Health Doughnut -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">📊 Stock Health Status</div>
+              <div class="card-subtitle">Breakdown of inventory risk categories</div>
+            </div>
+          </div>
+          <div style="height: 300px; position: relative;">
+            <canvas id="chart-stock-status"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Demand Forecasting Section -->
+      <section class="card" id="forecasting">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🔮 Statistical Demand Forecasting Panel</div>
+            <div class="card-subtitle">12-Month Historical Demand Trend vs In-Browser Projected Demand</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">Projection Period:</label>
+            <select id="forecast-horizon-select" class="input-select" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;">
+              <option value="3">Next 3 Months (+3M)</option>
+              <option value="6">Next 6 Months (+6M)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Educational Model Transparency Banner -->
+        <div class="forecast-callout">
+          <div class="forecast-callout-icon">ℹ️</div>
+          <div>
+            <strong>Statistical Engine Details:</strong> Computes dynamic projections using Least Squares Linear Regression blended with 3-Month Weighted Moving Average (WMA) recency smoothing.
+            <em>Note: Statistical projections provide operational estimates based on historical patterns and are not guaranteed future predictions.</em>
+          </div>
+        </div>
+
+        <!-- Line Chart -->
+        <div style="height: 340px; position: relative;">
+          <canvas id="chart-demand-forecast"></canvas>
+        </div>
+
+        <!-- Dynamic Statistical Metrics Grid -->
+        <div id="forecast-metrics-summary"></div>
+      </section>
+
+      <!-- Pick / Pack Animated Workflow -->
+      <section class="card" id="workflow">
+        <div id="workflow-container">
+          <!-- Rendered via src/components/workflow.js -->
+        </div>
+      </section>
+
+      <!-- Filterable Inventory Data Table -->
+      <section class="card" id="inventory">
+        <div class="card-header">
+          <div>
+            <div class="card-title">📦 Master Inventory Ledger</div>
+            <div class="card-subtitle">Detailed product stock counts, warehouse locations, and reorder alerts</div>
+          </div>
+          <span class="badge badge-success" id="inventory-item-count">Loading Products...</span>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Product & SKU</th>
+                <th>Category</th>
+                <th>Warehouse Locations</th>
+                <th>Stock Level & Ratio</th>
+                <th>Monthly Demand</th>
+                <th>Stock Status</th>
+                <th>Total Valuation</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-table-body">
+              <!-- Rendered via src/components/inventory.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="./src/js/app.js"></script>
+</body>
+</html>
