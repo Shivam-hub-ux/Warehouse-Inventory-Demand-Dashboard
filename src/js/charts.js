@@ -209,6 +209,123 @@ class ChartManager {
       }
     });
   }
+
+  /**
+   * Render Category SKU Distribution & Valuation Chart
+   */
+  renderSkuCategoryChart(canvasId, categoryData) {
+    this.destroyChart(canvasId);
+
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const labels = categoryData.map(c => c.category);
+    const skuCounts = categoryData.map(c => c.skuCount);
+    const valuations = categoryData.map(c => c.totalValuation);
+
+    this.instances[canvasId] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'SKU Count',
+            data: skuCounts,
+            backgroundColor: '#2563EB',
+            borderRadius: 6,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Valuation ($)',
+            data: valuations,
+            backgroundColor: 'rgba(124, 58, 237, 0.75)',
+            borderRadius: 6,
+            yAxisID: 'y1'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { font: { family: 'Inter', size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                if (context.datasetIndex === 1) {
+                  return `Valuation: $${Number(context.raw).toLocaleString()}`;
+                }
+                return `SKUs: ${context.raw}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            beginAtZero: true,
+            title: { display: true, text: 'Number of SKUs', font: { size: 10 } },
+            grid: { color: '#F1F5F9' }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            beginAtZero: true,
+            title: { display: true, text: 'Valuation ($)', font: { size: 10 } },
+            grid: { drawOnChartArea: false }
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Render Price Tier Distribution Doughnut Chart
+   */
+  renderSkuPriceTiersChart(canvasId, priceTiers) {
+    this.destroyChart(canvasId);
+
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const labels = priceTiers.map(t => t.label);
+    const counts = priceTiers.map(t => t.count);
+
+    this.instances[canvasId] = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data: counts,
+          backgroundColor: ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B'],
+          borderWidth: 2,
+          borderColor: '#FFFFFF'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const tier = priceTiers[context.dataIndex];
+                return `${tier.label}: ${tier.count} SKUs ($${tier.valuation.toLocaleString()})`;
+              }
+            }
+          }
+        },
+        cutout: '65%'
+      }
+    });
+  }
 }
 
 export const chartManager = new ChartManager();

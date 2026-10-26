@@ -23,6 +23,7 @@
 
         <div class="nav-links">
           <a href="#overview" class="nav-link active">Dashboard</a>
+          <a href="#sku-analytics" class="nav-link">SKU Analytics</a>
           <a href="#forecasting" class="nav-link">Demand Forecast</a>
           <a href="#workflow" class="nav-link">Pick/Pack Flow</a>
           <a href="#inventory" class="nav-link">Inventory Table</a>
@@ -36,6 +37,9 @@
 
     <!-- Main Content Body -->
     <main class="main-content" id="overview">
+
+      <!-- Global Data Layer Status Banner (Reactive State) -->
+      <div id="data-layer-status" style="display: none;"></div>
 
       <!-- Filter & Search Bar -->
       <section class="filter-bar">
@@ -115,6 +119,19 @@
           <div style="height: 300px; position: relative;">
             <canvas id="chart-stock-status"></canvas>
           </div>
+        </div>
+      </section>
+
+      <!-- Dedicated SKU Analytics Section -->
+      <section class="card" id="sku-analytics">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🏷️ SKU Analytics & Inventory Intelligence</div>
+            <div class="card-subtitle">Deep SKU-level distribution, pricing spectrum, velocity risks, and dataset health audit</div>
+          </div>
+        </div>
+        <div id="sku-analytics-container">
+          <!-- Rendered via src/components/skuAnalytics.js -->
         </div>
       </section>
 
