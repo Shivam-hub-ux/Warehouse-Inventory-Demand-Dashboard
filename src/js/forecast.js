@@ -153,3 +153,70 @@ export function generateAggregateDemandForecast(filters = {}, forecastMonthsCoun
     }
   };
 }
+
+/**
+ * Evaluates forecast accuracy using walk-forward validation.
+ * MAE = Mean Absolute Error
+ * MAPE = Mean Absolute Percentage Error
+ */
+export function calculateForecastAccuracy(filters = {}) {
+  const products = dataRepository.getProducts(filters);
+  const months = dataRepository.getMonths();
+
+  if (products.length === 0 || months.length < 4) {
+    return {
+      mae: null,
+      mape: null,
+      evaluatedPeriods: 0
+    };
+  }
+
+  const actualDemand = new Array(months.length).fill(0);
+
+  products.forEach(product => {
+    product.historicalDemand.forEach((demand, index) => {
+      if (index < actualDemand.length) {
+        actualDemand[index] += demand;
+      }
+    });
+  });
+
+  let absoluteErrorSum = 0;
+  let percentageErrorSum = 0;
+  let percentageCount = 0;
+  let evaluatedPeriods = 0;
+
+  for (let targetIndex = 3; targetIndex < actualDemand.length; targetIndex++) {
+    const history = actualDemand.slice(0, targetIndex);
+    const regression = calculateLinearRegression(history);
+    const wmaBaseline = calculateWeightedMovingAverage(history, 3);
+
+    const linearPrediction = regression.predict(targetIndex + 1);
+    const prediction = Math.max(
+      0,
+      Math.round(
+        0.65 * linearPrediction +
+        0.35 * (wmaBaseline + regression.slope)
+      )
+    );
+
+    const actual = actualDemand[targetIndex];
+    const error = Math.abs(actual - prediction);
+
+    absoluteErrorSum += error;
+    evaluatedPeriods++;
+
+    if (actual !== 0) {
+      percentageErrorSum += (error / Math.abs(actual)) * 100;
+      percentageCount++;
+    }
+  }
+
+  return {
+    mae: Number((absoluteErrorSum / evaluatedPeriods).toFixed(2)),
+    mape: percentageCount
+      ? Number((percentageErrorSum / percentageCount).toFixed(2))
+      : null,
+    evaluatedPeriods
+  };
+}

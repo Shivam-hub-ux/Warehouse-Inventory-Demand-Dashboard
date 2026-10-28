@@ -1,32 +1,67 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
-import { generateAggregateDemandForecast } from '../src/js/forecast.js';
 
-describe('Statistical Forecasting Engine: generateAggregateDemandForecast', () => {
-  it('generates 3-month forecast with linear and WMA projection', () => {
-    const forecast = generateAggregateDemandForecast({}, 3);
-    assert.equal(forecast.historicalLabels.length, 12);
-    assert.equal(forecast.historicalValues.length, 12);
-    assert.equal(forecast.forecastLabels.length, 3);
-    assert.equal(forecast.forecastValues.length, 3);
-    assert.equal(forecast.upperBoundValues.length, 3);
-    assert.equal(forecast.lowerBoundValues.length, 3);
+import { describe, it, expect } from 'vitest';
 
-    for (let i = 0; i < 3; i++) {
-      assert.ok(forecast.upperBoundValues[i] >= forecast.forecastValues[i]);
-      assert.ok(forecast.lowerBoundValues[i] <= forecast.forecastValues[i]);
-    }
+import {
+  generateAggregateDemandForecast,
+  calculateForecastAccuracy
+} from '../src/js/forecast.js';
+
+describe('Statistical Forecasting Engine', () => {
+  it('generates a 3-month forecast', () => {
+    const result = generateAggregateDemandForecast({}, 3);
+
+    expect(result.historicalLabels.length).toBe(12);
+    expect(result.historicalValues.length).toBe(12);
+    expect(result.forecastLabels.length).toBe(3);
+    expect(result.forecastValues.length).toBe(3);
+    expect(result.upperBoundValues.length).toBe(3);
+    expect(result.lowerBoundValues.length).toBe(3);
   });
 
-  it('generates 6-month forecast when requested', () => {
-    const forecast = generateAggregateDemandForecast({}, 6);
-    assert.equal(forecast.forecastLabels.length, 6);
-    assert.equal(forecast.forecastValues.length, 6);
+  it('generates a 6-month forecast when requested', () => {
+    const result = generateAggregateDemandForecast({}, 6);
+
+    expect(result.forecastLabels.length).toBe(6);
+    expect(result.forecastValues.length).toBe(6);
   });
 
-  it('handles empty filters gracefully', () => {
-    const forecast = generateAggregateDemandForecast({ category: 'NON-EXISTENT' }, 3);
-    assert.equal(forecast.historicalValues.length, 0);
-    assert.equal(forecast.forecastValues.length, 0);
+  it('handles filters with no matching products', () => {
+    const result = generateAggregateDemandForecast(
+      { category: 'NON-EXISTENT' },
+      3
+    );
+
+    expect(result.historicalValues.length).toBe(0);
+    expect(result.forecastValues.length).toBe(0);
+  });
+
+  it('returns non-negative forecast values', () => {
+    const result = generateAggregateDemandForecast();
+
+    result.forecastValues.forEach(value => {
+      expect(value).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  it('keeps forecast bounds around predicted values', () => {
+    const result = generateAggregateDemandForecast();
+
+    result.forecastValues.forEach((value, index) => {
+      expect(result.upperBoundValues[index]).toBeGreaterThanOrEqual(value);
+      expect(result.lowerBoundValues[index]).toBeLessThanOrEqual(value);
+    });
+  });
+});
+
+describe('Forecast Accuracy', () => {
+  it('returns valid MAE and MAPE metrics', () => {
+    const result = calculateForecastAccuracy();
+
+    expect(result).toHaveProperty('mae');
+    expect(result).toHaveProperty('mape');
+    expect(result).toHaveProperty('evaluatedPeriods');
+    expect(result.evaluatedPeriods).toBeGreaterThan(0);
+    expect(result.mae).toBeGreaterThanOrEqual(0);
+    expect(result.mape).toBeGreaterThanOrEqual(0);
   });
 });

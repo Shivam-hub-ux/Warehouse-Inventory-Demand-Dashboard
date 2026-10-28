@@ -1,48 +1,79 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+
+import { describe, it, expect } from 'vitest';
+
 import {
   calculateDashboardKPIs,
   calculateWarehouseInventoryDistribution,
   calculateCategoryDistribution,
-  calculateStockStatusBreakdown
+  calculateStockStatusBreakdown,
+  calculateAggregatedHistoricalDemand
 } from '../src/js/analytics.js';
+
 import { dataRepository } from '../src/js/data.js';
 
-describe('Inventory & Analytics Engine: calculateDashboardKPIs', () => {
-  it('computes top-level dashboard metrics for all products', () => {
-    const kpis = calculateDashboardKPIs();
-    assert.ok(kpis.totalInventoryUnits > 0);
-    assert.ok(kpis.totalValuation > 0);
-    assert.ok(kpis.totalProducts > 0);
-    assert.equal(kpis.activeWarehouseCount, 4);
+describe('Inventory Analytics', () => {
+  it('calculates dashboard KPIs', () => {
+    const result = calculateDashboardKPIs();
+
+    expect(result.totalInventoryUnits).toBeGreaterThan(0);
+    expect(result.totalValuation).toBeGreaterThan(0);
+    expect(result.totalProducts).toBeGreaterThan(0);
+    expect(result.activeWarehouseCount).toBe(4);
   });
 
-  it('filters KPI calculations when specific warehouse is selected', () => {
+  it('filters KPI calculations by warehouse', () => {
     const globalKpis = calculateDashboardKPIs();
-    const northKpis = calculateDashboardKPIs({ warehouse: 'WH-NORTH' });
+    const northKpis = calculateDashboardKPIs({
+      warehouse: 'WH-NORTH'
+    });
 
-    assert.equal(northKpis.activeWarehouseCount, 1);
-    assert.ok(northKpis.totalInventoryUnits <= globalKpis.totalInventoryUnits);
-    assert.ok(northKpis.totalValuation <= globalKpis.totalValuation);
+    expect(northKpis.activeWarehouseCount).toBe(1);
+    expect(northKpis.totalInventoryUnits)
+      .toBeLessThanOrEqual(globalKpis.totalInventoryUnits);
+    expect(northKpis.totalValuation)
+      .toBeLessThanOrEqual(globalKpis.totalValuation);
   });
-});
 
-describe('Inventory & Analytics Engine: calculateWarehouseInventoryDistribution', () => {
   it('calculates inventory and capacity utilization per warehouse', () => {
-    const dist = calculateWarehouseInventoryDistribution();
-    assert.equal(dist.length, 4);
-    dist.forEach(wh => {
-      assert.ok(wh.capacity > 0);
-      assert.ok(wh.totalStock >= 0);
-      assert.ok(wh.utilizationPct >= 0 && wh.utilizationPct <= 100);
+    const result = calculateWarehouseInventoryDistribution();
+
+    expect(result.length).toBe(4);
+
+    result.forEach(warehouse => {
+      expect(warehouse.capacity).toBeGreaterThan(0);
+      expect(warehouse.totalStock).toBeGreaterThanOrEqual(0);
+      expect(warehouse.utilizationPct).toBeGreaterThanOrEqual(0);
+      expect(warehouse.utilizationPct).toBeLessThanOrEqual(100);
     });
   });
-});
 
-describe('Inventory & Analytics Engine: calculateStockStatusBreakdown', () => {
-  it('categorizes products into In Stock, Low Stock, and Critical', () => {
+  it('calculates category distribution', () => {
+    const result = calculateCategoryDistribution();
+
+    expect(Array.isArray(result)).toBe(true);
+    expect(result.length).toBeGreaterThan(0);
+
+    result.forEach(category => {
+      expect(category.count).toBeGreaterThan(0);
+      expect(category.stock).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  it('categorizes stock status correctly', () => {
     const breakdown = calculateStockStatusBreakdown();
     const sum = breakdown.inStock + breakdown.lowStock + breakdown.critical;
-    assert.equal(sum, dataRepository.getProducts().length);
+
+    expect(sum).toBe(dataRepository.getProducts().length);
+  });
+
+  it('returns historical demand labels and values', () => {
+    const result = calculateAggregatedHistoricalDemand();
+
+    expect(result.labels.length).toBeGreaterThan(0);
+    expect(result.values.length).toBe(result.labels.length);
+
+    result.values.forEach(value => {
+      expect(value).toBeGreaterThanOrEqual(0);
+    });
   });
 });
