@@ -92,23 +92,25 @@ class ChartManager {
     const allLabels = [...historicalLabels, ...forecastLabels];
 
     // Align series points so forecast line connects continuously with historical data
-    const historicalSeries = [...forecastData.historicalValues];
-    for (let i = 0; i < forecastLabels.length; i++) {
-      historicalSeries.push(null);
-    }
-
-    const forecastSeries = new Array(historicalLabels.length - 1).fill(null);
-    // Connect to the last historical point
-    forecastSeries.push(forecastData.historicalValues[forecastData.historicalValues.length - 1]);
-    forecastSeries.push(...forecastData.forecastValues);
-
-    const upperBoundSeries = new Array(historicalLabels.length - 1).fill(null);
-    upperBoundSeries.push(forecastData.historicalValues[forecastData.historicalValues.length - 1]);
-    upperBoundSeries.push(...forecastData.upperBoundValues);
-
-    const lowerBoundSeries = new Array(historicalLabels.length - 1).fill(null);
-    lowerBoundSeries.push(forecastData.historicalValues[forecastData.historicalValues.length - 1]);
-    lowerBoundSeries.push(...forecastData.lowerBoundValues);
+    const historicalCount = historicalLabels.length;
+    const hasHistory = forecastData.historicalValues.length > 0;
+    const lastHistorical = hasHistory
+      ? forecastData.historicalValues[forecastData.historicalValues.length - 1]
+      : null;
+    const historicalSeries = Array.from(
+      { length: historicalCount },
+      (_, index) => forecastData.historicalValues[index] ?? null
+    ).concat(new Array(forecastLabels.length).fill(null));
+    const forecastPrefix = new Array(Math.max(0, historicalCount - 1)).fill(null);
+    const forecastSeries = forecastPrefix
+      .concat(hasHistory ? [lastHistorical] : [null])
+      .concat(forecastData.forecastValues);
+    const upperBoundSeries = forecastPrefix
+      .concat(hasHistory ? [lastHistorical] : [null])
+      .concat(forecastData.upperBoundValues);
+    const lowerBoundSeries = forecastPrefix
+      .concat(hasHistory ? [lastHistorical] : [null])
+      .concat(forecastData.lowerBoundValues);
 
     this.instances[canvasId] = new Chart(ctx, {
       type: 'line',

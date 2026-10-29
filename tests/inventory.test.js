@@ -1,5 +1,5 @@
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import {
   calculateDashboardKPIs,
@@ -45,6 +45,26 @@ describe('Inventory Analytics', () => {
       expect(warehouse.utilizationPct).toBeGreaterThanOrEqual(0);
       expect(warehouse.utilizationPct).toBeLessThanOrEqual(100);
     });
+  });
+
+  it('scopes warehouse distribution to a selected warehouse and passes filters to the repository', () => {
+    const getProducts = vi.spyOn(dataRepository, 'getProducts');
+    const filters = { warehouse: 'WH-NORTH', category: 'Electronics', search: 'sensor' };
+
+    try {
+      const result = calculateWarehouseInventoryDistribution(filters);
+
+      expect(getProducts).toHaveBeenCalledWith(filters);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('WH-NORTH');
+      expect(result[0].capacity).toBeGreaterThan(0);
+    } finally {
+      getProducts.mockRestore();
+    }
+  });
+
+  it('returns no warehouse bars for an unknown warehouse filter', () => {
+    expect(calculateWarehouseInventoryDistribution({ warehouse: 'UNKNOWN' })).toEqual([]);
   });
 
   it('calculates category distribution', () => {

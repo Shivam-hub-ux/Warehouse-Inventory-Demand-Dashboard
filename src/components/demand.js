@@ -8,7 +8,7 @@ import { chartManager } from '../js/charts.js';
 
 export function renderDemandSection(filters = {}) {
   // 1. Render Warehouse Stock Distribution Bar Chart
-  const warehouseDist = calculateWarehouseInventoryDistribution();
+  const warehouseDist = calculateWarehouseInventoryDistribution(filters);
   chartManager.renderWarehouseChart('chart-warehouse-dist', warehouseDist);
 
   // 2. Render Stock Status Breakdown Doughnut Chart

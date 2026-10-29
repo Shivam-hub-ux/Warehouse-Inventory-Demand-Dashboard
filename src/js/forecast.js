@@ -8,7 +8,13 @@
  * Note: Computed entirely in-browser memory without external machine learning or API calls.
  */
 
-import { dataRepository } from './data.js';
+import { calculateAggregatedHistoricalDemand } from './analytics.js';
+
+const DEFAULT_FORECAST_MONTHS = 3;
+
+function normalizeDemand(values) {
+  return values.map(value => Number.isFinite(value) && value >= 0 ? value : 0);
+}
 
 /**
  * Perform Least Squares Linear Regression: y = m * x + b
@@ -16,7 +22,8 @@ import { dataRepository } from './data.js';
  * @returns {Object} { slope, intercept, predict(x) }
  */
 function calculateLinearRegression(yValues) {
-  const n = yValues.length;
+  const values = normalizeDemand(yValues);
+  const n = values.length;
   if (n === 0) return { slope: 0, intercept: 0, predict: () => 0 };
 
   let sumX = 0;
@@ -26,7 +33,7 @@ function calculateLinearRegression(yValues) {
 
   for (let i = 0; i < n; i++) {
     const x = i + 1; // 1-indexed time steps
-    const y = yValues[i];
+    const y = values[i];
     sumX += x;
     sumY += y;
     sumXY += x * y;
@@ -50,15 +57,22 @@ function calculateLinearRegression(yValues) {
  * @param {number} windowSize 
  */
 function calculateWeightedMovingAverage(yValues, windowSize = 3) {
-  const n = yValues.length;
-  if (n < windowSize) return yValues[n - 1] || 0;
+  const values = normalizeDemand(yValues);
+  const n = values.length;
+  const safeWindowSize = Number.isInteger(windowSize) && windowSize > 0
+    ? Math.min(windowSize, n)
+    : Math.min(3, n);
+  if (safeWindowSize === 0) return 0;
 
-  const weights = [0.2, 0.3, 0.5]; // Higher weight given to most recent months
-  const recent = yValues.slice(n - windowSize);
+  const weights = safeWindowSize === 3
+    ? [0.2, 0.3, 0.5]
+    : Array.from({ length: safeWindowSize }, (_, index) => index + 1);
+  const weightTotal = weights.reduce((sum, weight) => sum + weight, 0);
+  const recent = values.slice(n - safeWindowSize);
 
   let weightedSum = 0;
-  for (let i = 0; i < windowSize; i++) {
-    weightedSum += recent[i] * weights[i];
+  for (let i = 0; i < safeWindowSize; i++) {
+    weightedSum += recent[i] * weights[i] / weightTotal;
   }
 
   return weightedSum;
@@ -70,10 +84,16 @@ function calculateWeightedMovingAverage(yValues, windowSize = 3) {
  * @param {number} forecastMonthsCount - Number of future months to project (default 3)
  */
 export function generateAggregateDemandForecast(filters = {}, forecastMonthsCount = 3) {
-  const products = dataRepository.getProducts(filters);
-  const months = dataRepository.getMonths();
+  const {
+    labels: months,
+    values: aggregateHistorical,
+    productCount
+  } = calculateAggregatedHistoricalDemand(filters);
+  const safeForecastMonths = Number.isFinite(forecastMonthsCount)
+    ? Math.max(0, Math.min(24, Math.floor(forecastMonthsCount)))
+    : DEFAULT_FORECAST_MONTHS;
 
-  if (products.length === 0) {
+  if (aggregateHistorical.length === 0 || productCount === 0) {
     return {
       historicalLabels: months,
       historicalValues: [],
@@ -85,24 +105,15 @@ export function generateAggregateDemandForecast(filters = {}, forecastMonthsCoun
     };
   }
 
-  const periodLength = months.length;
-  const aggregateHistorical = new Array(periodLength).fill(0);
-
-  // Sum up monthly historical demand across all selected items
-  products.forEach(p => {
-    p.historicalDemand.forEach((demand, idx) => {
-      if (idx < periodLength) {
-        aggregateHistorical[idx] += demand;
-      }
-    });
-  });
+  const periodLength = aggregateHistorical.length;
+  const safeHistory = normalizeDemand(aggregateHistorical);
 
   // 1. Calculate Linear Trend
-  const regression = calculateLinearRegression(aggregateHistorical);
+  const regression = calculateLinearRegression(safeHistory);
 
   // 2. Calculate WMA baseline for recency smoothing
-  const wmaBaseline = calculateWeightedMovingAverage(aggregateHistorical, 3);
-  const lastHistorical = aggregateHistorical[periodLength - 1];
+  const wmaBaseline = calculateWeightedMovingAverage(safeHistory, 3);
+  const lastHistorical = safeHistory[periodLength - 1] || 0;
 
   // Blended forecast factor: 60% Linear Trend Projection + 40% Weighted Recency
   const forecastLabels = [];
@@ -112,7 +123,7 @@ export function generateAggregateDemandForecast(filters = {}, forecastMonthsCoun
 
   const futureMonthNames = ['Jan (+1)', 'Feb (+1)', 'Mar (+1)', 'Apr (+1)', 'May (+1)', 'Jun (+1)'];
 
-  for (let step = 1; step <= forecastMonthsCount; step++) {
+  for (let step = 1; step <= safeForecastMonths; step++) {
     const timeIndex = periodLength + step;
     const linearValue = regression.predict(timeIndex);
     
@@ -132,20 +143,20 @@ export function generateAggregateDemandForecast(filters = {}, forecastMonthsCoun
   }
 
   // Calculate Growth Trend Percentage
-  const avgHistorical = aggregateHistorical.reduce((a, b) => a + b, 0) / periodLength;
-  const avgForecast = forecastValues.reduce((a, b) => a + b, 0) / forecastValues.length;
-  const trendPct = avgHistorical > 0 ? (((avgForecast - avgHistorical) / avgHistorical) * 100).toFixed(1) : 0;
+  const avgHistorical = periodLength > 0 ? safeHistory.reduce((a, b) => a + b, 0) / periodLength : 0;
+  const avgForecast = forecastValues.length > 0 ? forecastValues.reduce((a, b) => a + b, 0) / forecastValues.length : 0;
+  const trendPct = avgHistorical > 0 ? Number((((avgForecast - avgHistorical) / avgHistorical) * 100).toFixed(1)) : 0;
 
   return {
     historicalLabels: months,
-    historicalValues: aggregateHistorical,
+    historicalValues: safeHistory,
     forecastLabels: forecastLabels,
     forecastValues: forecastValues,
     upperBoundValues: upperBoundValues,
     lowerBoundValues: lowerBoundValues,
     metrics: {
-      slope: regression.slope.toFixed(2),
-      trendPct: Number(trendPct),
+      slope: Number(regression.slope.toFixed(2)),
+      trendPct,
       avgMonthlyDemand: Math.round(avgHistorical),
       lastHistoricalValue: lastHistorical,
       confidenceLevel: '92% Confidence Interval',
@@ -160,10 +171,12 @@ export function generateAggregateDemandForecast(filters = {}, forecastMonthsCoun
  * MAPE = Mean Absolute Percentage Error
  */
 export function calculateForecastAccuracy(filters = {}) {
-  const products = dataRepository.getProducts(filters);
-  const months = dataRepository.getMonths();
+  const {
+    values: monthlyDemand,
+    productCount
+  } = calculateAggregatedHistoricalDemand(filters);
 
-  if (products.length === 0 || months.length < 4) {
+  if (monthlyDemand.length < 4 || productCount === 0) {
     return {
       mae: null,
       mape: null,
@@ -171,15 +184,7 @@ export function calculateForecastAccuracy(filters = {}) {
     };
   }
 
-  const actualDemand = new Array(months.length).fill(0);
-
-  products.forEach(product => {
-    product.historicalDemand.forEach((demand, index) => {
-      if (index < actualDemand.length) {
-        actualDemand[index] += demand;
-      }
-    });
-  });
+  const actualDemand = normalizeDemand(monthlyDemand);
 
   let absoluteErrorSum = 0;
   let percentageErrorSum = 0;

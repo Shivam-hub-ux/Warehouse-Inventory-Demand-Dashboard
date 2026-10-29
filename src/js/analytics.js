@@ -54,9 +54,13 @@ export function calculateDashboardKPIs(filters = {}) {
   };
 }
 
-export function calculateWarehouseInventoryDistribution() {
-  const warehouses = dataRepository.getWarehouses();
-  const products = dataRepository.getProducts();
+export function calculateWarehouseInventoryDistribution(filters = {}) {
+  const allWarehouses = dataRepository.getWarehouses();
+  const warehouses = filters.warehouse && filters.warehouse !== 'ALL'
+    ? allWarehouses.filter(warehouse => warehouse.id === filters.warehouse)
+    : allWarehouses;
+
+  const products = dataRepository.getProducts(filters);
 
   const distribution = warehouses.map(wh => {
     let totalStock = 0;
@@ -72,7 +76,9 @@ export function calculateWarehouseInventoryDistribution() {
       }
     });
 
-    const utilizationPct = Math.min(100, Math.round((totalStock / wh.capacity) * 100));
+    const utilizationPct = wh.capacity > 0
+      ? Math.min(100, Math.round((totalStock / wh.capacity) * 100))
+      : 0;
 
     return {
       id: wh.id,
@@ -147,8 +153,10 @@ export function calculateAggregatedHistoricalDemand(filters = {}) {
   const monthlyTotals = new Array(months.length).fill(0);
 
   products.forEach(p => {
+    if (!Array.isArray(p.historicalDemand)) return;
+
     p.historicalDemand.forEach((val, idx) => {
-      if (idx < monthlyTotals.length) {
+      if (idx < monthlyTotals.length && Number.isFinite(val) && val >= 0) {
         monthlyTotals[idx] += val;
       }
     });
@@ -156,6 +164,7 @@ export function calculateAggregatedHistoricalDemand(filters = {}) {
 
   return {
     labels: months,
-    values: monthlyTotals
+    values: monthlyTotals,
+    productCount: products.length
   };
 }
