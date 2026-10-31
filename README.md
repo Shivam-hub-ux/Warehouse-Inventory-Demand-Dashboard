@@ -84,6 +84,34 @@ warehouse-inventory-demand-dashboard/
     └── forecasting.test.js        # Unit tests for linear regression & WMA demand forecasting
 ```
 
+## 🔄 Project Workflow
+
+1. **Dataset Loading** — `src/js/data.js` initializes the repository from the bundled products, warehouses, categories, months, and orders in `data/warehouse-data.js`.
+2. **Preparation and Validation** — `src/js/datasetPreparation.js` normalizes and validates records, preserves SKU strings, and produces a validation report.
+3. **Client-Side Data Processing** — `DataRepository` keeps the prepared records in browser memory and provides filtering, sorting, pagination, and accessors.
+4. **Inventory and SKU Analytics** — `src/js/analytics.js` calculates dashboard and warehouse inventory metrics; `src/js/skuAnalytics.js` calculates SKU, price, stock, and coverage metrics.
+5. **Demand Forecasting** — `src/js/analytics.js` aggregates product-level monthly demand. `src/js/forecast.js` combines least-squares linear regression with a three-month weighted moving average (WMA), and calculates forecast accuracy on the same product-level scope.
+6. **Dashboard Visualization** — Components render KPIs, tables, and Chart.js visualizations through `src/js/charts.js`.
+7. **User Interaction and Pick/Pack Workflow** — `src/js/app.js` passes warehouse, category, stock-status, and search filters to the relevant views and rerenders them when controls change. `src/components/workflow.js` simulates an order through Created, Picking, Packing, and Ready stages. Warehouse selection affects inventory views; historical demand is product-level and is not split by warehouse.
+
+```mermaid
+flowchart TD
+    A[Bundled dataset<br/>data/warehouse-data.js] --> B[Load into DataRepository<br/>src/js/data.js]
+    B --> C[Prepare and validate<br/>src/js/datasetPreparation.js]
+    C --> D[In-memory client-side data<br/>filter, sort, paginate]
+    D --> E[Inventory analytics<br/>analytics.js]
+    D --> F[SKU analytics<br/>skuAnalytics.js]
+    D --> G[Aggregate product demand]
+    G --> H[Forecast and accuracy<br/>Regression + 3-month WMA]
+    E --> I[Dashboard components]
+    F --> I
+    H --> I
+    I --> J[KPIs, tables, Chart.js views]
+    K[User filters and forecast horizon] --> L[app.js rerenders views]
+    L --> D
+    M[Pick/Pack simulation<br/>workflow.js] --> N[Local order status update]
+```
+
 ---
 
 ## 📊 Dataset Preparation Rules & Schema
